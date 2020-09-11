@@ -5,7 +5,7 @@ FROM php:7.4-apache-buster
 RUN set -ex; \
     \
     apt-get update; \
-    apt-get upgrage -y;\
+    apt-get upgrade -y;\
     apt-get install -y --no-install-recommends \
         rsync \
         bzip2 \
