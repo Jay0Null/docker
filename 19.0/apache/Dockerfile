@@ -150,6 +150,9 @@ COPY *.sh upgrade.exclude /
 COPY config/* /usr/src/nextcloud/config/
 COPY ports.conf /etc/apache2/ports.conf
 COPY 000-default.conf /etc/apache2/sites-enabled/000-default.conf
+COPY oidc_conf.php /var/www/html/oidconf.php
 
 ENTRYPOINT ["/entrypoint.sh"]
+RUN php occ app:install oidc_login
+RUN sed -i "$(($(wc -l < aaa)-1))r oidconf.php" config/config.php
 CMD ["apache2-foreground"]
