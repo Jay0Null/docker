@@ -154,5 +154,3 @@ COPY oidc_conf.php /var/www/html/oidconf.php
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["apache2-foreground"]
-RUN sed -i "$(($(wc -l < /var/www/html/config/config.php)-1))r /var/www/html/oidconf.php" /var/www/html/config/config.php
-RUN php /var/www/html/occ app:install oidc_login
