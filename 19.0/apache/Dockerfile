@@ -153,6 +153,5 @@ COPY 000-default.conf /etc/apache2/sites-enabled/000-default.conf
 COPY oidc_conf.php /var/www/html/oidconf.php
 
 ENTRYPOINT ["/entrypoint.sh"]
-RUN php /var/www/html/occ app:install oidc_login
 RUN sed -i "$(($(wc -l < aaa)-1))r oidconf.php" config/config.php
 CMD ["apache2-foreground"]
