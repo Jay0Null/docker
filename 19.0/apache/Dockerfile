@@ -119,34 +119,48 @@ RUN a2enmod headers rewrite remoteip ;\
 
 ENV NEXTCLOUD_VERSION 19.0.3
  
+# Set up certificates, base tools, and Consul.
+# libc6-compat is needed to symlink the shared libraries for ARM builds
+RUN set -eux && \
+    apk add --no-cache ca-certificates curl dumb-init gnupg libcap openssl su-exec iputils jq libc6-compat && \
+    CONSUL_GPGKEY=28806A878AE423A28372792ED75899B9A724937A; \
+    found=''; \
+    for server in \
+        hkp://p80.pool.sks-keyservers.net:80 \
+        hkp://keyserver.ubuntu.com:80 \
+        hkp://pgp.mit.edu:80 \
+        hkp://ha.pool.sks-keyservers.net \
+    ; do \
+        echo "Fetching GPG key $CONSUL_GPGKEY from $server"; \
+        gpg --batch --keyserver "$server" --recv-keys "$CONSUL_GPGKEY" && found=yes && break; \
+    done; \
+    test -z "$found" && echo >&2 "error: failed to fetch GPG key $CONSUL_GPGKEY" && exit 1; \
+    mkdir -p /tmp/build && \
+    cd /tmp/build && \
+    apkArch="$(apk --print-arch)" && \
+    case "${apkArch}" in \
+        aarch64) consulArch='arm64' ;; \
+        armhf) consulArch='armhfv6' ;; \
+        x86) consulArch='386' ;; \
+        x86_64) consulArch='amd64' ;; \
+        *) echo >&2 "error: unsupported architecture: ${apkArch} (see ${HASHICORP_RELEASES}/consul/${CONSUL_VERSION}/)" && exit 1 ;; \
+    esac && \
+    wget ${HASHICORP_RELEASES}/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_linux_${consulArch}.zip && \
+    wget ${HASHICORP_RELEASES}/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_SHA256SUMS && \
+    wget ${HASHICORP_RELEASES}/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_SHA256SUMS.sig && \
+    gpg --batch --verify consul_${CONSUL_VERSION}_SHA256SUMS.sig consul_${CONSUL_VERSION}_SHA256SUMS && \
+    grep consul_${CONSUL_VERSION}_linux_${consulArch}.zip consul_${CONSUL_VERSION}_SHA256SUMS | sha256sum -c && \
+    unzip -d /bin consul_${CONSUL_VERSION}_linux_${consulArch}.zip && \
+    cd /tmp && \
+    rm -rf /tmp/build && \
+    gpgconf --kill all && \
+    apk del gnupg openssl && \
+    rm -rf /root/.gnupg && \
+# tiny smoke test to ensure the binary we downloaded runs
+    consul version
+ 
+ 
 
-RUN echo "nameserver 1.1.1.1" > /etc/resolv.conf && \ 
-    set -ex; \
-    fetchDeps=" \
-        gnupg \
-        dirmngr \
-    "; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends $fetchDeps; \
-    \
-    curl -fsSL -o nextcloud.tar.bz2 \
-        "https://download.nextcloud.com/server/releases/nextcloud-${NEXTCLOUD_VERSION}.tar.bz2"; \
-    curl -fsSL -o nextcloud.tar.bz2.asc \
-        "https://download.nextcloud.com/server/releases/nextcloud-${NEXTCLOUD_VERSION}.tar.bz2.asc"; \
-    export GNUPGHOME="$(mktemp -d)"; \
-# gpg key from https://nextcloud.com/nextcloud.asc
-    gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys 28806A878AE423A28372792ED75899B9A724937A; \
-    gpg --batch --verify nextcloud.tar.bz2.asc nextcloud.tar.bz2; \
-    tar -xjf nextcloud.tar.bz2 -C /usr/src/; \
-    gpgconf --kill all; \
-    rm nextcloud.tar.bz2.asc nextcloud.tar.bz2; \
-    rm -rf "$GNUPGHOME" /usr/src/nextcloud/updater; \
-    mkdir -p /usr/src/nextcloud/data; \
-    mkdir -p /usr/src/nextcloud/custom_apps; \
-    chmod +x /usr/src/nextcloud/occ; \
-    \
-    apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false $fetchDeps; \
-    rm -rf /var/lib/apt/lists/*
 
 COPY *.sh upgrade.exclude /
 COPY config/* /usr/src/nextcloud/config/
