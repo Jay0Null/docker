@@ -118,8 +118,10 @@ RUN a2enmod headers rewrite remoteip ;\
     a2enconf remoteip
 
 ENV NEXTCLOUD_VERSION 19.0.3
+ 
 
-RUN set -ex; \
+RUN echo "nameserver 1.1.1.1" > /etc/resolv.conf && \ 
+    set -ex; \
     fetchDeps=" \
         gnupg \
         dirmngr \
@@ -133,7 +135,7 @@ RUN set -ex; \
         "https://download.nextcloud.com/server/releases/nextcloud-${NEXTCLOUD_VERSION}.tar.bz2.asc"; \
     export GNUPGHOME="$(mktemp -d)"; \
 # gpg key from https://nextcloud.com/nextcloud.asc
-    gpg --batch --keyserver ha.pool.sks-keyservers.net:80 --recv-keys 28806A878AE423A28372792ED75899B9A724937A; \
+    gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys 28806A878AE423A28372792ED75899B9A724937A; \
     gpg --batch --verify nextcloud.tar.bz2.asc nextcloud.tar.bz2; \
     tar -xjf nextcloud.tar.bz2 -C /usr/src/; \
     gpgconf --kill all; \
