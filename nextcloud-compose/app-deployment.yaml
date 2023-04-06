@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yaml
+    kompose.version: 1.26.0 (40646f47)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: app
+  name: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: app
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yaml
+        kompose.version: 1.26.0 (40646f47)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/nextcloud_network: "true"
+        io.kompose.service: app
+    spec:
+      containers:
+        - env:
+            - name: MYSQL_HOST
+              value: db
+          image: nextcloud:latest
+          name: nextcloud-app
+          ports:
+            - containerPort: 80
+          resources: {}
+          volumeMounts:
+            - mountPath: /var/www/html
+              name: nextcloud
+            - mountPath: /var/www/html/config
+              name: app-claim1
+            - mountPath: /var/www/html/custom_apps
+              name: app-claim2
+            - mountPath: /var/www/html/data
+              name: app-claim3
+            - mountPath: /var/www/html/themes
+              name: app-claim4
+            - mountPath: /etc/localtime
+              name: app-claim5
+              readOnly: true
+      hostname: nextcloud.local
+      restartPolicy: Always
+      volumes:
+        - name: nextcloud
+          persistentVolumeClaim:
+            claimName: nextcloud
+        - name: app-claim1
+          persistentVolumeClaim:
+            claimName: app-claim1
+        - name: app-claim2
+          persistentVolumeClaim:
+            claimName: app-claim2
+        - name: app-claim3
+          persistentVolumeClaim:
+            claimName: app-claim3
+        - name: app-claim4
+          persistentVolumeClaim:
+            claimName: app-claim4
+        - name: app-claim5
+          persistentVolumeClaim:
+            claimName: app-claim5
+            readOnly: true
+status: {}
